@@ -121,3 +121,12 @@ select*from p5p2e4_imagen_medica WHERE id_paciente=5;
 
 --Antes agrego un paciente que cumpla con menos de dos fluoroscopias anuales para poder chequear la subconsulta:
 update p5p2e4_procesamiento SET fecha_procesamiento='2023-05-09' WHERE id_imagen=6;
+
+--4.e. No se pueden aplicar algoritmos de costo computacional “O(n)” a imágenes de FLUOROSCOPIA
+CREATE ASSERTION ck_imagen_medica_procesamiento_algoritmo_costo_fluoroscopia_on CHECK (NOT EXISTS
+    (SELECT m.id_imagen FROM p5p2e4_imagen_medica m INNER JOIN p5p2e4_procesamiento p ON (m.id_imagen=p.id_imagen AND m.id_paciente=p.id_paciente)
+INNER JOIN p5p2e4_algoritmo a ON (p.id_algoritmo=a.id_algoritmo) WHERE (modalidad='FLUOROSCOPIA' AND costo_computacional='O(n)')));
+    --Realizo la subconsulta antes:
+SELECT m.id_imagen FROM p5p2e4_imagen_medica m INNER JOIN p5p2e4_procesamiento p ON (m.id_imagen=p.id_imagen AND m.id_paciente=p.id_paciente)
+INNER JOIN p5p2e4_algoritmo a ON (p.id_algoritmo=a.id_algoritmo) WHERE (modalidad='FLUOROSCOPIA' AND costo_computacional='O(n)');
+
