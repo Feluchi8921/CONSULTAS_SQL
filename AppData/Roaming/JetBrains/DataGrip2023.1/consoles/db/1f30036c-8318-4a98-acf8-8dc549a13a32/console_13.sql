@@ -85,3 +85,10 @@ CREATE ASSERTION ck_venta_prenda_categoria_oferta_sin_descuento CHECK
 --subconsulta en negacion
     SELECT * FROM p5p2e5_venta v INNER JOIN p5p2e5_prenda p ON v.id_prenda = p.id_prenda  WHERE
     (categoria='oferta' AND descuento!=0);
+
+SELECT 1 FROM (SELECT (dia_liq || '/' || mes_liq || '/2023', 'dd/MM/yyyy') fecha, to_date(dia_liq || '/' || mes_liq || '/2023', 'dd/MM/yyyy')
+fecha_inicio, (to_date(dia_liq || '/' || mes_liq || '/2023', 'dd/MM/yyyy')+cant_dias) fecha_fin FROM p5p2e5_fecha_liq) tabla
+WHERE to_date('10/1/2023','dd/MM/yyyy') BETWEEN tabla.fecha_inicio AND tabla.fecha_fin;
+
+SELECT (dia_liq || '/' || mes_liq || '/2023', 'dd/MM/yyyy') fecha, to_date(dia_liq || '/' || mes_liq || '/2023', 'dd/MM/yyyy')
+fecha_inicio, (to_date(dia_liq || '/' || mes_liq || '/2023', 'dd/MM/yyyy')+cant_dias) fecha_fin FROM p5p2e5_fecha_liq tabla;

@@ -81,6 +81,19 @@ insert into p5p2e4_procesamiento (id_algoritmo, id_paciente, id_imagen, nro_secu
 select*from p5p2e4_procesamiento;
 
 --Consultas:
+
+--1.1 No puede haber voluntarios de más de 70 años.
+ALTER TABLE unc_esq_voluntario.voluntario ADD CONSTRAINT ck_fecha CHECK (AGE(fecha_nacimiento)<'70 years');
+--revisar
+--1.2 Ningún voluntario puede aportar más horas que las de su coordinador.
+ALTER TABLE unc_esq_voluntario.voluntario ADD CONSTRAINT ck_horas CHECK (NOT EXISTS(SELECT 1
+FROM unc_esq_voluntario.voluntario v INNER JOIN unc_esq_voluntario.voluntario c ON v.id_coordinador = c.nro_voluntario
+WHERE v.horas_aportadas>c.horas_aportadas));
+
+--MATCHING
+--FULL
+--PARCIAL la fk tiene mas de una columna y las columnas puedan ser nulas
+--SIMPLE
 --4.a. La modalidad de la imagen médica puede tomar los siguientes valores RADIOLOGIA CONVENCIONAL,
 -- FLUOROSCOPIA, ESTUDIOS RADIOGRAFICOS CON FLUOROSCOPIA, MAMOGRAFIA, SONOGRAFIA.
 ALTER TABLE p5p2e4_imagen_medica ADD CONSTRAINT ck_imagen_medica_modalidad CHECK

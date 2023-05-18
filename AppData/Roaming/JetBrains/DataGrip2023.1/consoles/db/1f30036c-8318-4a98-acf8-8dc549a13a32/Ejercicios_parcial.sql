@@ -8,3 +8,4 @@ INNER JOIN unc_esq_peliculas.empleado e ON (dep.id_departamento=dist.id_distribu
 SELECT * FROM unc_esq_peliculas.empleado e INNER JOIN unc_esq_peliculas.departamento dpto ON
     (e.id_departamento=dpto.id_departamento AND e.id_distribuidor=dpto.id_distribuidor) INNER JOIN unc_esq_peliculas.empleado j
 ON (dpto.jefe_departamento=e.id_empleado) WHERE (j.porc_comision>20 AND e.telefono LIKE '600%');
+
