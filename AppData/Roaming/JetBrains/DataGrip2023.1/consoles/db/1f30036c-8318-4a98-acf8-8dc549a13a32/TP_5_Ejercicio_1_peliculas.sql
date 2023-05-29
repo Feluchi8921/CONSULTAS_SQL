@@ -48,3 +48,15 @@ CREATE ASSERTION ck_telef_distrib CHECK(NOT EXISTS(
 SELECT 1 FROM distribuidor d JOIN nacional n ON d.id_distribuidor = n.id_distribuidor JOIN distribuidor di
     ON n.id_distrib_mayorista = di.id_distribuidor
 WHERE d.LEFT(telefono, 3) != di.LEFT(telefono, 3)));
+
+--8.  Liste los 3 países donde residan las productoras con mayor cantidad de películas producidas.
+SELECT ep.codigo_productora, c.id_pais, COUNT(codigo_pelicula) FROM unc_esq_peliculas.pelicula p INNER JOIN unc_esq_peliculas.empresa_productora ep
+ON p.codigo_productora=ep.codigo_productora INNER JOIN unc_esq_peliculas.ciudad c ON ep.id_ciudad = c.id_ciudad
+GROUP BY ep.codigo_productora, c.id_pais ORDER BY COUNT(codigo_pelicula) DESC LIMIT 3;
+
+SELECT c.id_pais
+FROM unc_esq_peliculas.ciudad c JOIN unc_esq_peliculas.empresa_productora e ON c.id_ciudad = e.id_ciudad JOIN unc_esq_peliculas.pelicula p ON p.codigo_productora = e.codigo_productora
+GROUP BY e.codigo_productora, c.id_pais
+ORDER BY count(codigo_pelicula) desc
+LIMIT 3;
+
