@@ -22,8 +22,6 @@ ON d.id_distribuidor = dis.id_distribuidor INNER JOIN unc_esq_peliculas.entrega 
 WHERE (EXTRACT(YEAR FROM fecha_entrega)=2006
 AND EXTRACT(YEAR FROM fecha_entrega)=2009) GROUP BY e.id_distribuidor HAVING COUNT(nro_entrega)>3;
 
-
-
 CREATE ASSERTION ck_x_atencion_x_especialidad_max_10_medicos(NOT EXISTS(SELECT 1 FROM CENTRO_SALUD cs INNER JOIN ATIENDE a
     ON (cs.cod_centro=a.cod_centro) GROUP BY sala_atencion, tipo_especialidad HAVING COUNT(nro_matricula)>10));
 
@@ -100,3 +98,14 @@ ALTER TABLE MEDICO ADD CONSTRAINT FK_MEDICO_ESPECIALIDAD
 
 -- End of file.
 
+----------------------
+SELECT t.id_tarea, t.nombre_tarea
+FROM unc_esq_peliculas.tarea t
+WHERE NOT EXISTS(
+       SELECT 1
+       FROM unc_esq_peliculas.empleado e
+       WHERE e.id_tarea = t.id_tarea
+   )
+AND t.sueldo_maximo > 14500
+ORDER BY t.sueldo_minimo DESC
+LIMIT 3;
