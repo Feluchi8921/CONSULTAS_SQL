@@ -20,13 +20,7 @@ CREATE TABLE pedidos_a_fabrica (
 codigo_articulo INTEGER,
 cantidad INTEGER );
 
---2. Creo el trigger
-CREATE TRIGGER TR_PEDIR_A_FABRICA
-    AFTER INSERT  ON pedidos_clientes  --evento insert
-    FOR EACH ROW --se ejecuta por cada pedido
-    EXECUTE PROCEDURE FN_PEDIR_A_FABRICA(); --accion
-
---3. Creo la funcion
+--2. Creo la funccion
 CREATE OR REPLACE FUNCTION FN_PEDIR_A_FABRICA()
 RETURNS Trigger AS
     $$ --cuerpo de la funcion
@@ -45,6 +39,12 @@ BEGIN
 END;
     $$
     LANGUAGE plpgsql;
+
+--3. Creo el trigger
+CREATE TRIGGER TR_PEDIR_A_FABRICA
+    AFTER INSERT  ON pedidos_clientes  --evento insert
+    FOR EACH ROW --se ejecuta por cada pedido
+    EXECUTE PROCEDURE FN_PEDIR_A_FABRICA(); --accion
 
 --4. Hago las pruebas de insertar
 INSERT INTO pedidos_clientes VALUES ( 102, 50, 10);

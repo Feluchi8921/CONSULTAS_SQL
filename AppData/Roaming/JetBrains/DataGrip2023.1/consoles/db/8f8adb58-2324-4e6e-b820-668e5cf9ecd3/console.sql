@@ -269,25 +269,21 @@ ALTER TABLE his_tarea ADD CONSTRAINT FK_HIS_TAREA_TAREA
 
 DROP TABLE his_tarea;
 
-CREATE OR REPLACE FUNCTION FN_ACTUALIZAR_TABLA_HIS_TAREA()
-RETURNS Trigger AS $$
+create or replace function fn_registros_histarea () returns trigger
+as
+$$
     BEGIN
-    IF TG_OP='INSERT' THEN
-        INSERT INTO his_tarea (nro_registro, fecha, operacion, usuario, id_tarea) VALUES (nro_registro=NEW.nro_registro, fecha=NEW.fecha, operacion=NEW.operacion, usuario=NEW.usuario, id_tarea=NEW.id_tarea);
-    RETURN NEW;
-    END IF;
-    IF TG_OP='UPDATE' THEN
-        UPDATE his_tarea SET nro_registro=NEW.nro_registro, fecha=NEW.fecha, operacion=NEW.operacion, usuario=NEW.usuario WHERE id_tarea=NEW.id_tarea;
-    RETURN NEW;
-    END IF;
-    IF TG_OP='DELETE' THEN
-        DELETE FROM his_tarea
+            INSERT INTO HIS_TAREA(nro_registro, fecha, operación, usuario) VALUES (nextval('his_tarea_nro_registro_seq'),CURRENT_DATE, TG_OP,current_user);
+    if(TG_OP = 'DELETE') THEN
+        RETURN OLD;
+        ELSE
+        return NEW;
     end if;
-END $$
-LANGUAGE 'plpgsql';
+    end$$
+language plpgsql;
 
-CREATE TRIGGER TR_ACTUALIZAR_TABLA_HIS_TAREA
-    AFTER INSERT OR UPDATE OF nro_registro, fecha, operacion, usuario, id_tarea OR DELETE
-           ON his_tarea
-           FOR EACH ROW
-           EXECUTE PROCEDURE FN_ACTUALIZAR_TABLA_HIS_TAREA();
+create trigger tr_actualizarregistros_histareas
+after insert or update of id_tarea, nombre_tarea, min_horas, max_horas or delete
+on tarea_personal
+for each statement
+execute procedure fn_registros_histarea ();
