@@ -286,8 +286,8 @@ CREATE OR REPLACE FUNCTION ACTUALIZAR_TABLA_HIS_TAREA()
         --Actualizacion por delete:
         IF TG_OP='DELETE' THEN          --si elimino un resgitro de tarea, inserto un registro en his_tarea con la operacion delete
             INSERT INTO his_tarea (fecha, operacion, usuario) VALUES (CURRENT_DATE, TG_OP, CURRENT_USER);       --inserto el nuevo valor
-        END IF;
         RETURN OLD;
+        END IF;
     END;
 $$ LANGUAGE plpgsql;
 
@@ -378,7 +378,8 @@ AS $$
     (SELECT e.id_empleado, e.apellido, e.nombre, e.sueldo, e.porc_comision
 FROM esq_peliculas_empleado e
     INNER JOIN esq_peliculas_departamento d ON e.id_distribuidor = d.id_distribuidor AND e.id_departamento = d.id_departamento
-WHERE e.porc_comision > (SELECT AVG(porc_comision) FROM esq_peliculas_empleado WHERE id_departamento=d.id_departamento));
+WHERE e.porc_comision > (SELECT AVG(porc_comision) FROM esq_peliculas_empleado em
+                                                   WHERE d.id_departamento=em.id_departamento AND d.id_distribuidor=em.id_distribuidor));
 RETURN;
 END $$
 LANGUAGE 'plpgsql';
@@ -387,22 +388,27 @@ SELECT FN_ACTUALIZAR_TABLA_SUELDOS();
 
 SELECT * FROM sueldos;
 
+SELECT e.id_empleado, e.apellido, e.nombre, e.sueldo, e.porc_comision
+FROM esq_peliculas_empleado e
+    INNER JOIN esq_peliculas_departamento d ON e.id_distribuidor = d.id_distribuidor AND e.id_departamento = d.id_departamento
+WHERE e.porc_comision > (SELECT AVG(porc_comision) FROM esq_peliculas_empleado em WHERE d.id_departamento=em.id_departamento AND d.id_distribuidor=em.id_distribuidor);
+
 --Cambiar el distribuidor de las entregas sucedidas a partir de una fecha dada,
 -- siendo que el par de valores de distribuidor viejo y distribuidor nuevo es variable.
 
 --Crear Funcion
-CREATE OR REPLACE FUNCTION FN_CAMBIAR_DISTRIBUIDOR()
+CREATE OR REPLACE FUNCTION FN_CAMBIAR_DISTRIBUIDOR(distribuidor_id INT)
 RETURNS void AS $$
     BEGIN
     --Selecciono todos los distribuidores con entregas despues del 2005
     UPDATE esq_peliculas_entrega
-    SET id_distribuidor = 5000
+    SET id_distribuidor = distribuidor_id
     WHERE fecha_entrega > '2006-12-03';
 RETURN;
 END $$
 LANGUAGE 'plpgsql';
 --Llamar a la funcion
-SELECT FN_CAMBIAR_DISTRIBUIDOR();
+SELECT FN_CAMBIAR_DISTRIBUIDOR(5000);
 
 --Dejo el borrado por si lo necesito
 DROP FUNCTION FN_CAMBIAR_DISTRIBUIDOR();
@@ -423,6 +429,8 @@ INSERT INTO esq_peliculas_distribuidor (id_distribuidor, nombre, direccion, tele
 -- que calcule la cantidad y la almacene en una tabla denominada CANT_VOLUNTARIOSXTAREA con la siguiente estructura:
 --CANT_VOLUNTARIOSXTAREA (anio, mes, id_tarea, nombre_tarea, cant_voluntarios)
 
+--Tabla unc_voluntarios (count(nro_voluntario), group by tarea)
+
 CREATE TABLE cant_voluntariosxtarea(
     anio INTEGER,
     mes INTEGER,
@@ -430,13 +438,32 @@ CREATE TABLE cant_voluntariosxtarea(
     nombre_tarea VARCHAR(40),
     cant_voluntarios INTEGER
 );
+DROP TABLE IF EXISTS cant_voluntariosxtarea;
 
-CREATE OR REPLACE FUNCTION FN_ACTUALIZACION_MENSUAL_CANT_VOLUNTARIOS()
-RETURNS void AS $$
+CREATE PROCEDURE PR_ACTUALIZACION_MENSUAL_CANT_VOLUNTARIOS()
+AS $$
+    DECLARE cant_vol INT;
+    DECLARE tarea INT;
+    DECLARE nombre VARCHAR(40);
     BEGIN
 
-    RETURN;
+    SELECT CURRENT_DATE;
+
+    --Necisito seleccionar la cantidad de voluntarios por tarea, id y nombre
+    SELECT DISTINCT t.id_tarea, t.nombre_tarea, COUNT(*) FROM unc_esq_voluntario.voluntario v
+    INNER JOIN unc_esq_voluntario.tarea t on t.id_tarea = v.id_tarea
+    WHERE (EXTRACT(DAY FROM (SELECT CURRENT_DATE)))=1 GROUP BY t.id_tarea, t.nombre_tarea;
+    --aca iria un where inicio mes= mes_current_date
+    --Inserto la cantidad y los otros datos en la nueva tabla
+    INSERT INTO cant_voluntariosxtarea (anio, mes, id_tarea, nombre_tarea, cant_voluntarios) VALUES
+    (EXTRACT(YEARS FROM current_date), EXTRACT(MONTHS FROM current_date), tarea, nombre, cant_vol);
 END $$
 LANGUAGE 'plpgsql';
---Llamar a la funcion
-SELECT FN_ACTUALIZACION_MENSUAL_CANT_VOLUNTARIOS();
+
+--Llamo al procedimiento
+SELECT PR_ACTUALIZACION_MENSUAL_CANT_VOLUNTARIOS();
+
+--Pruebo el select
+SELECT DISTINCT id_tarea, COUNT(*) FROM unc_esq_voluntario.voluntario GROUP BY id_tarea;
+
+
