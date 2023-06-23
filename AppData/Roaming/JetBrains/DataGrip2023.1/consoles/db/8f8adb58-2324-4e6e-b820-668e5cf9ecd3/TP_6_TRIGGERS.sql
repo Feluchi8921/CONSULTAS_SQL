@@ -242,7 +242,7 @@ DECLARE cantidad_idiomas INTEGER;
     SELECT genero AS gen, idioma AS idiom, COUNT(*) AS cantidad_peliculas, count (distinct idioma) AS cantidad_idiomas
     FROM Pelicula
     group by genero, idioma;
-    IF(cant>0)
+    IF(cantidad_idiomas>0)
     THEN RAISE EXCEPTION 'error';
     END IF;
 RETURN NEW;
@@ -253,37 +253,190 @@ CREATE TRIGGER TR_ACTUALIZAR_TABLA
     BEFORE INSERT OR UPDATE OF genero, idioma
            ON Pelicula
            FOR EACH ROW EXECUTE PROCEDURE FN_ACTUALIZAR_TABLA();
+-----------------------------------------TRABAJO PRACTICO N6 TRIGGER PARTE 2-------------------
 
----Para el esquema unc_voluntarios considere que se quiere mantener un registro de quién y cuándo realizó actualizaciones sobre la tabla TAREA en la tabla HIS_TAREA. Dicha tabla tiene la siguiente estructura:
+--EJERCICIO 1
+
+---Para el esquema unc_voluntarios considere que se quiere mantener un registro de quién y cuándo
+-- realizó actualizaciones sobre la tabla TAREA en la tabla HIS_TAREA. Dicha tabla tiene la siguiente estructura:
 --HIS_TAREA(nro_registro, fecha, operación, usuario)
+DROP TABLE IF EXISTS his_tarea;
 CREATE TABLE his_tarea(
-    nro_registro int,
-    fecha date,
-    operacion int,
-    usuario varchar(20),
-    id_tarea varchar(10) NOT NULL
+    nro_registro SERIAL,
+    fecha DATE,
+    operacion VARCHAR(20),
+    usuario VARCHAR(20),
+    PRIMARY KEY(nro_registro)
 );
-ALTER TABLE his_tarea ADD CONSTRAINT FK_HIS_TAREA_TAREA
-    FOREIGN KEY (id_tarea)
-    REFERENCES unc_esq_voluntario.tarea(id_tarea);
-
-DROP TABLE his_tarea;
-
-create or replace function fn_registros_histarea () returns trigger
-as
-$$
+SELECT * FROM unc_esq_peliculas.tarea;
+--1. Funcion
+CREATE OR REPLACE FUNCTION ACTUALIZAR_TABLA_HIS_TAREA()
+    RETURNS TRIGGER AS $$
     BEGIN
-            INSERT INTO HIS_TAREA(nro_registro, fecha, operación, usuario) VALUES (nextval('his_tarea_nro_registro_seq'),CURRENT_DATE, TG_OP,current_user);
-    if(TG_OP = 'DELETE') THEN
+        --Actualizacion por insert:
+        IF TG_OP='INSERT' THEN             --si inserto en tarea, inserto un registro en his_tarea con la operacion insert
+            INSERT INTO his_tarea (fecha, operacion, usuario) VALUES (CURRENT_DATE, TG_OP, CURRENT_USER);
+        RETURN NEW;
+        END IF;
+        --Actualizacion por update:
+        IF TG_OP='UPDATE' THEN          --si modifico la tabla tarea, inserto un registro en his_tarea con la operacion update
+            INSERT INTO his_tarea (fecha, operacion, usuario) VALUES (CURRENT_DATE, TG_OP, CURRENT_USER);       --inserto el nuevo valor
+        RETURN NEW;
+        END IF;
+        --Actualizacion por delete:
+        IF TG_OP='DELETE' THEN          --si elimino un resgitro de tarea, inserto un registro en his_tarea con la operacion delete
+            INSERT INTO his_tarea (fecha, operacion, usuario) VALUES (CURRENT_DATE, TG_OP, CURRENT_USER);       --inserto el nuevo valor
+        END IF;
         RETURN OLD;
-        ELSE
-        return NEW;
-    end if;
-    end$$
-language plpgsql;
+    END;
+$$ LANGUAGE plpgsql;
 
-create trigger tr_actualizarregistros_histareas
-after insert or update of id_tarea, nombre_tarea, min_horas, max_horas or delete
-on tarea_personal
-for each statement
-execute procedure fn_registros_histarea ();
+--2. Trigger
+
+CREATE TRIGGER TR_ACTUALIZAR_TABLA_HIS_TAREA
+AFTER INSERT OR UPDATE OF id_tarea, nombre_tarea, sueldo_maximo, sueldo_minimo OR DELETE
+ON esq_peliculas_tarea
+FOR EACH STATEMENT
+EXECUTE PROCEDURE ACTUALIZAR_TABLA_HIS_TAREA();
+
+DROP TRIGGER IF EXISTS TR_ACTUALIZAR_TABLA_HIS_TAREA ON esq_peliculas_tarea;
+
+--3. Pruebas
+INSERT INTO esq_peliculas_tarea (id_tarea, nombre_tarea, sueldo_maximo, sueldo_minimo) VALUES (20000, 'Tarea 18000', 15000, 12000);
+UPDATE esq_peliculas_tarea SET sueldo_minimo=16000 WHERE id_tarea='20000';
+INSERT INTO esq_peliculas_tarea (id_tarea, nombre_tarea, sueldo_maximo, sueldo_minimo) VALUES (20001, 'Tarea 2001', 18000, 13000);
+DELETE FROM esq_peliculas_tarea WHERE id_tarea='20001';
+
+
+--Muestre los resultados de las tablas si se ejecuta la operación:
+--DELETE FROM TAREA
+--WHERE id_tarea like ‘AD%’;
+--Según el o los triggers definidos sean FOR EACH ROW o FOR EACH STATEMENT. Evalúe la diferencia entre ambos tipos de granularidad.
+
+DELETE FROM esq_peliculas_tarea
+WHERE id_tarea like 'AD%';
+
+DROP TRIGGER IF EXISTS TR_ACTUALIZAR_TABLA_HIS_TAREA ON esq_peliculas_tarea;
+
+CREATE TRIGGER TR_ACTUALIZAR_TABLA_HIS_TAREA
+AFTER INSERT OR UPDATE OR DELETE ON esq_peliculas_tarea
+FOR EACH ROW
+EXECUTE PROCEDURE ACTUALIZAR_TABLA_HIS_TAREA();
+
+--Ejercicio 2
+
+--Completar una tabla denominada MAS_ENTREGADAS con los datos de las 20 películas más entregadas
+-- en los últimos seis meses desde la ejecución del procedimiento. Esta tabla por lo menos
+-- debe tener las columnas código_pelicula, nombre,  cantidad_de_entregas
+-- (en caso de coincidir en cantidad de entrega ordenar por código de película).
+DROP TABLE IF EXISTS mas_entregadas;
+CREATE TABLE mas_entregadas(
+    codigo_pelicula NUMERIC(5),
+    titulo VARCHAR(60),
+    cantidad INTEGER
+);
+
+CREATE OR REPLACE FUNCTION FN_ACTUALIZAR_TABLA_MAS_ENTREGADAS()
+    RETURNS VOID
+AS $$
+    BEGIN
+    DELETE FROM mas_entregadas;
+    INSERT INTO mas_entregadas (codigo_pelicula, titulo, cantidad)
+    (SELECT p.codigo_pelicula, titulo, COUNT(*) AS cantidad FROM esq_peliculas_pelicula p
+    INNER JOIN esq_peliculas_renglon_entrega r ON p.codigo_pelicula=r.codigo_pelicula
+    INNER JOIN esq_peliculas_entrega e ON r.nro_entrega=e.nro_entrega
+    WHERE e.fecha_entrega>(CURRENT_DATE - INTERVAL '20 years')
+    GROUP BY p.codigo_pelicula, titulo
+    ORDER BY cantidad DESC
+    LIMIT 20);
+    RETURN;
+END $$
+LANGUAGE 'plpgsql';
+
+--DROP FUNCTION fn_actualizar_tabla_mas_entregadas() CASCADE;
+SELECT FN_ACTUALIZAR_TABLA_MAS_ENTREGADAS()  --ejecuto la funcion
+
+--Generar los datos para una tabla denominada SUELDOS,
+-- con los datos de los empleados cuyas comisiones superen a la media del departamento en el que trabajan.
+-- Esta tabla debe tener las columnas id_empleado, apellido, nombre, sueldo, porc_comision.
+DROP TABLE IF EXISTS sueldos;
+
+CREATE TABLE sueldos(
+    id_empleado NUMERIC(6) NOT NULL,
+    apellido VARCHAR(30),
+    nombre VARCHAR(30),
+    sueldo NUMERIC(8,2),
+    porc_coimision NUMERIC(6,2)
+);
+
+CREATE OR REPLACE FUNCTION FN_ACTUALIZAR_TABLA_SUELDOS()
+    RETURNS VOID
+AS $$
+    BEGIN
+    DELETE FROM sueldos;
+    INSERT INTO sueldos (id_empleado, apellido, nombre, sueldo, porc_coimision)
+    (SELECT e.id_empleado, e.apellido, e.nombre, e.sueldo, e.porc_comision
+FROM esq_peliculas_empleado e
+    INNER JOIN esq_peliculas_departamento d ON e.id_distribuidor = d.id_distribuidor AND e.id_departamento = d.id_departamento
+WHERE e.porc_comision > (SELECT AVG(porc_comision) FROM esq_peliculas_empleado WHERE id_departamento=d.id_departamento));
+RETURN;
+END $$
+LANGUAGE 'plpgsql';
+
+SELECT FN_ACTUALIZAR_TABLA_SUELDOS();
+
+SELECT * FROM sueldos;
+
+--Cambiar el distribuidor de las entregas sucedidas a partir de una fecha dada,
+-- siendo que el par de valores de distribuidor viejo y distribuidor nuevo es variable.
+
+--Crear Funcion
+CREATE OR REPLACE FUNCTION FN_CAMBIAR_DISTRIBUIDOR()
+RETURNS void AS $$
+    BEGIN
+    --Selecciono todos los distribuidores con entregas despues del 2005
+    UPDATE esq_peliculas_entrega
+    SET id_distribuidor = 5000
+    WHERE fecha_entrega > '2006-12-03';
+RETURN;
+END $$
+LANGUAGE 'plpgsql';
+--Llamar a la funcion
+SELECT FN_CAMBIAR_DISTRIBUIDOR();
+
+--Dejo el borrado por si lo necesito
+DROP FUNCTION FN_CAMBIAR_DISTRIBUIDOR();
+--Inserto un distribuidor nuevo para identificarlo mas rapido
+INSERT INTO esq_peliculas_distribuidor (id_distribuidor, nombre, direccion, telefono, tipo)
+    VALUES (5000,'Felicitas', 'Mistral xxx', 24940000, 'I');
+
+--Hago las pruebas
+SELECT*FROM esq_peliculas_entrega WHERE id_distribuidor=5000;
+SELECT * FROM esq_peliculas_distribuidor WHERE id_distribuidor=5000;
+
+INSERT INTO esq_peliculas_distribuidor (id_distribuidor, nombre, direccion, telefono, tipo)
+    VALUES (5000,'Felicitas', 'Mistral xxx', 24940000, 'I');
+
+--Ejercicio 3
+--Para el esquema unc_voluntarios se desea conocer la cantidad de voluntarios que hay en cada tarea
+-- al inicio de cada mes y guardarla a lo largo de los meses. Para esto es necesario hacer un procedimiento
+-- que calcule la cantidad y la almacene en una tabla denominada CANT_VOLUNTARIOSXTAREA con la siguiente estructura:
+--CANT_VOLUNTARIOSXTAREA (anio, mes, id_tarea, nombre_tarea, cant_voluntarios)
+
+CREATE TABLE cant_voluntariosxtarea(
+    anio INTEGER,
+    mes INTEGER,
+    id_tarea VARCHAR(10),
+    nombre_tarea VARCHAR(40),
+    cant_voluntarios INTEGER
+);
+
+CREATE OR REPLACE FUNCTION FN_ACTUALIZACION_MENSUAL_CANT_VOLUNTARIOS()
+RETURNS void AS $$
+    BEGIN
+
+    RETURN;
+END $$
+LANGUAGE 'plpgsql';
+--Llamar a la funcion
+SELECT FN_ACTUALIZACION_MENSUAL_CANT_VOLUNTARIOS();

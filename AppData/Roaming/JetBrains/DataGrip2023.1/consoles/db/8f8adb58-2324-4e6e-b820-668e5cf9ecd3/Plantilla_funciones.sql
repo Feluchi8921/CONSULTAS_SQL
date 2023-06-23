@@ -1,0 +1,9 @@
+CREATE OR REPLACE FUNCTION FN_NOMBRE_FUNCION()
+RETURNS void AS $$
+    BEGIN
+
+    RETURN;
+END $$
+LANGUAGE 'plpgsql';
+--Llamar a la funcion
+SELECT FN_NOMBRE_FUNCION();
