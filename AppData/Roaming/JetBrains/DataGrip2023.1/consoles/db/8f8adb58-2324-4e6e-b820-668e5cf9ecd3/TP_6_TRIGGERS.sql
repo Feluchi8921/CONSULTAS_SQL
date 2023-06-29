@@ -397,18 +397,18 @@ WHERE e.porc_comision > (SELECT AVG(porc_comision) FROM esq_peliculas_empleado e
 -- siendo que el par de valores de distribuidor viejo y distribuidor nuevo es variable.
 
 --Crear Funcion
-CREATE OR REPLACE FUNCTION FN_CAMBIAR_DISTRIBUIDOR(distribuidor_id INT)
+CREATE OR REPLACE FUNCTION FN_CAMBIAR_DISTRIBUIDOR(distribuidor_id INT, a_partir_de_fecha date)
 RETURNS void AS $$
     BEGIN
     --Selecciono todos los distribuidores con entregas despues del 2005
     UPDATE esq_peliculas_entrega
     SET id_distribuidor = distribuidor_id
-    WHERE fecha_entrega > '2006-12-03';
+    WHERE fecha_entrega > a_partir_de_fecha;
 RETURN;
 END $$
 LANGUAGE 'plpgsql';
 --Llamar a la funcion
-SELECT FN_CAMBIAR_DISTRIBUIDOR(5000);
+SELECT FN_CAMBIAR_DISTRIBUIDOR(5000,'1980-03-21');
 
 --Dejo el borrado por si lo necesito
 DROP FUNCTION FN_CAMBIAR_DISTRIBUIDOR();
@@ -465,5 +465,6 @@ SELECT PR_ACTUALIZACION_MENSUAL_CANT_VOLUNTARIOS();
 
 --Pruebo el select
 SELECT DISTINCT id_tarea, COUNT(*) FROM unc_esq_voluntario.voluntario GROUP BY id_tarea;
+
 
 
